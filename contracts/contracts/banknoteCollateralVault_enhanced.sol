@@ -9,8 +9,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 
 /**
  * A smart contract that mints and redeems banknotes.  The web app is responsible for printing the notes.
@@ -231,7 +231,8 @@ contract BanknoteCollateralVault is ReentrancyGuard, VRFConsumerBaseV2 {
             minter: msg.sender,
             erc20: _erc20,
             pubkey: _pubkey,
-            denomination: _denomination
+            denomination: _denomination,
+            uniqueIdentifier: 0
         });
 
         id = nextId++;

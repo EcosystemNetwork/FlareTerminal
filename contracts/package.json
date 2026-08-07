@@ -5,13 +5,15 @@
     "main": "index.js",
     "scripts": {
         "test": "npx hardhat test",
+        "coverage": "npx hardhat coverage",
         "deploy": "npx hardhat run scripts/deploy.js --network hedera",
         "run": "npx hardhat run scripts/interact.js --network hedera"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-toolbox": "^2.0.0",
         "dotenv": "^16.4.5",
-        "hardhat": "^2.22.10"
+        "hardhat": "^2.22.10",
+        "solidity-coverage": "^0.8.13"
     },
     "dependencies": {
         "@chainlink/contracts": "^1.2.0",
