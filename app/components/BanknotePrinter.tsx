@@ -32,7 +32,9 @@ const BanknotePrinter: React.FC<BanknotePrinterProps> = ({ onClose, onPrint }) =
   };
 
   const generatePrivateKey = () => {
-    const key = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const key = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
     setPrivateKey(key);
     setFormattedPrivateKey(formatPrivateKey(key));
   };
