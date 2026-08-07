@@ -201,6 +201,9 @@ export default function Merchant() {
         setTokenAddresses(addresses);
       } catch (error) {
         console.error("Error fetching token addresses:", error);
+        setError(
+          "Failed to load token configuration: " + (error as Error).message
+        );
       }
     }
     fetchAndSetTokenAddresses();
