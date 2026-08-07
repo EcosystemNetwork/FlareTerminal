@@ -266,9 +266,8 @@ contract BanknoteCollateralVault is ReentrancyGuard, VRFConsumerBaseV2 {
         Banknote memory note = banknotes[_banknote];
         require(_denomination != 0, "Bad banknote");
 
-        address signer = banknotes[_banknote].pubkey; // *** DEBUG MODE*** - FORCE SUCCESS FOR NOW!!
-        // Check that the message (sender's address) was signed by the private key on the banknote 
-        // address signer = verifySignatureOfAddress(msg.sender, _sig);
+        // Check that the message (sender's address) was signed by the private key on the banknote.
+        address signer = verifySignatureOfAddress(msg.sender, _sig);
 
         require(signer == banknotes[_banknote].pubkey, "Redemption denied");
 
