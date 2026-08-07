@@ -1,10 +1,9 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { deployNZDollar, deployVault } = require("./helpers");
 
 describe("BanknoteCollateralVault", function () {
-  let BanknoteCollateralVault;
   let vault;
-  let NZDollar;
   let nzDollar;
   let owner;
   let addr1;
@@ -12,14 +11,8 @@ describe("BanknoteCollateralVault", function () {
 
   beforeEach(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
-
-    NZDollar = await ethers.getContractFactory("NZDollar");
-    nzDollar = await NZDollar.deploy(ethers.utils.parseEther("1000000"));
-    await nzDollar.deployed();
-
-    BanknoteCollateralVault = await ethers.getContractFactory("BanknoteCollateralVault");
-    vault = await BanknoteCollateralVault.deploy(owner.address);
-    await vault.deployed();
+    nzDollar = await deployNZDollar();
+    vault = await deployVault(owner);
   });
 
   it("Should mint a banknote", async function () {

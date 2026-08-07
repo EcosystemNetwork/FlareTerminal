@@ -1,266 +1,164 @@
-import { Screen } from "./interfaces";
+import { Option, Screen, ScreenOption } from "./interfaces";
 import { ActionEnum } from "./action-enums";
 
-export const screenDisconnected: Screen = {
-  title: "Skeuomorphica Bank",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "Sign in>", actionId: ActionEnum.PROCESS_LOGIN },
-    },
-  ],
-};
+const option = (message: string, actionId: ActionEnum): Option => ({
+  message,
+  actionId,
+});
 
-export const screenMainMenu: Screen = {
-  title: "Select amount",
-  options: [
-    {
-      left: { message: "<100", actionId: ActionEnum.PROCESS_WITHDRAW_100 },
-      right: { message: "10>", actionId: ActionEnum.PROCESS_WITHDRAW_10 },
-    },
-    {
-      left: { message: "<50", actionId: ActionEnum.PROCESS_WITHDRAW_50 },
-      right: { message: "5>", actionId: ActionEnum.PROCESS_WITHDRAW_5 },
-    },
-    {
-      left: { message: "<20", actionId: ActionEnum.PROCESS_WITHDRAW_20 },
-      right: { message: "2>", actionId: ActionEnum.PROCESS_WITHDRAW_2 },
-    },
-    {
-      left: { message: "<Cancel", actionId: ActionEnum.PROCESS_LOGOUT },
-      right: { message: "More>", actionId: ActionEnum.GO_MORE_OPTIONS },
-    },
-  ],
-};
+const blank = (): Option => option("", ActionEnum.NO_ACTION);
 
-export const screenMoreOptions: Screen = {
-  title: "Select option",
-  options: [
-    {
-      left: { message: "<Balance", actionId: ActionEnum.GO_BALANCE },
-      right: { message: "Deposit>", actionId: ActionEnum.GO_DEPOSIT },
-    },
-    {
-      left: { message: "<Withdraw", actionId: ActionEnum.GO_WITHDRAW },
-      right: { message: "Statement>", actionId: ActionEnum.VIEW_BANKNOTES },
-    },
-    {
-      left: { message: "<Invest", actionId: ActionEnum.GO_INVEST },
-      right: { message: "Currency>", actionId: ActionEnum.GO_CURRENCIES },
-    },
-    {
-      left: { message: "<Cancel", actionId: ActionEnum.GO_MAIN_MENU },
-      right: { message: "Settings>", actionId: ActionEnum.GO_SETTINGS },
-    },
-  ],
-};
+const row = (left: Option, right: Option): ScreenOption => ({ left, right });
 
-export const screenWithdrawMenu: Screen = {
-  title: "Select amount",
-  options: [
-    {
-      left: { message: "<100", actionId: ActionEnum.PROCESS_WITHDRAW_100 },
-      right: { message: "10>", actionId: ActionEnum.PROCESS_WITHDRAW_10 },
-    },
-    {
-      left: { message: "<50", actionId: ActionEnum.PROCESS_WITHDRAW_50 },
-      right: { message: "5>", actionId: ActionEnum.PROCESS_WITHDRAW_5 },
-    },
-    {
-      left: { message: "<20", actionId: ActionEnum.PROCESS_WITHDRAW_20 },
-      right: { message: "2>", actionId: ActionEnum.PROCESS_WITHDRAW_2 },
-    },
-    {
-      left: { message: "<Cancel", actionId: ActionEnum.CANCEL_WITHDRAW },
-      right: { message: "More>", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+const blankRow = (): ScreenOption => row(blank(), blank());
 
-export const screenConfirm: Screen = {
-  title: "Please confirm",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Cancel", actionId: ActionEnum.CANCEL_WITHDRAW },
-      right: { message: "Print>", actionId: ActionEnum.EXECUTE_WITHDRAW },
-    },
-  ],
-};
+const backRow = (
+  back: ActionEnum,
+  right: Option = blank(),
+  label = "<Back"
+): ScreenOption => row(option(label, back), right);
 
-export const screenBalance: Screen = {
-  title: "Account Balance",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+const screen = (title: string, options: ScreenOption[]): Screen => ({
+  title,
+  options,
+});
 
-export const screenDeposit: Screen = {
-  title: "Deposit Funds",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+/** The three denomination rows shared by every "select amount" screen. */
+const denominationRows = (): ScreenOption[] => [
+  row(
+    option("<100", ActionEnum.PROCESS_WITHDRAW_100),
+    option("10>", ActionEnum.PROCESS_WITHDRAW_10)
+  ),
+  row(
+    option("<50", ActionEnum.PROCESS_WITHDRAW_50),
+    option("5>", ActionEnum.PROCESS_WITHDRAW_5)
+  ),
+  row(
+    option("<20", ActionEnum.PROCESS_WITHDRAW_20),
+    option("2>", ActionEnum.PROCESS_WITHDRAW_2)
+  ),
+];
 
-export const screenWithdraw: Screen = {
-  title: "Withdraw Funds",
-  options: [
-    {
-      left: { message: "<100", actionId: ActionEnum.PROCESS_WITHDRAW_100 },
-      right: { message: "10>", actionId: ActionEnum.PROCESS_WITHDRAW_10 },
-    },
-    {
-      left: { message: "<50", actionId: ActionEnum.PROCESS_WITHDRAW_50 },
-      right: { message: "5>", actionId: ActionEnum.PROCESS_WITHDRAW_5 },
-    },
-    {
-      left: { message: "<20", actionId: ActionEnum.PROCESS_WITHDRAW_20 },
-      right: { message: "2>", actionId: ActionEnum.PROCESS_WITHDRAW_2 },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "More>", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+/** A screen with a title, three empty rows and a back button. */
+const infoScreen = (title: string, back: ActionEnum): Screen =>
+  screen(title, [blankRow(), blankRow(), blankRow(), backRow(back)]);
 
-export const screenStatement: Screen = {
-  title: "Print Statement",
-  options: [
-    {
-      left: { message: "Select", actionId: ActionEnum.SELECT_BANKNOTE },
-      right: { message: "Print", actionId: ActionEnum.PRINT_BANKNOTE },
-    },
-    {
-      left: { message: "Previous", actionId: ActionEnum.PREVIOUS_BANKNOTE },
-      right: { message: "Next", actionId: ActionEnum.NEXT_BANKNOTE },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MAIN_MENU },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+/** Paged list of banknotes with select/print and previous/next controls. */
+export const createBanknoteListScreen = (
+  title: string,
+  back: ActionEnum = ActionEnum.GO_MAIN_MENU
+): Screen =>
+  screen(title, [
+    row(
+      option("Select", ActionEnum.SELECT_BANKNOTE),
+      option("Print", ActionEnum.PRINT_BANKNOTE)
+    ),
+    row(
+      option("Previous", ActionEnum.PREVIOUS_BANKNOTE),
+      option("Next", ActionEnum.NEXT_BANKNOTE)
+    ),
+    blankRow(),
+    backRow(back),
+  ]);
 
-export const screenInvest: Screen = {
-  title: "Invest Funds",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+export const screenDisconnected: Screen = screen("Skeuomorphica Bank", [
+  blankRow(),
+  blankRow(),
+  blankRow(),
+  row(blank(), option("Sign in>", ActionEnum.PROCESS_LOGIN)),
+]);
 
-export const screenCurrencies: Screen = {
-  title: "Select Currency",
-  options: [
-    {
-      left: { message: "<USDC", actionId: ActionEnum.NO_ACTION },
-      right: { message: "ETH>", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<EUROC", actionId: ActionEnum.NO_ACTION },
-      right: { message: "DOGE>", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<NZDT>", actionId: ActionEnum.NO_ACTION },
-      right: { message: "PEPE>", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "More>", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+export const screenMainMenu: Screen = screen("Select amount", [
+  ...denominationRows(),
+  row(
+    option("<Cancel", ActionEnum.PROCESS_LOGOUT),
+    option("More>", ActionEnum.GO_MORE_OPTIONS)
+  ),
+]);
 
-export const screenSettings: Screen = {
-  title: "Settings",
-  options: [
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    }, 
-    {
-      left: { message: "", actionId: ActionEnum.NO_ACTION },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-    {
-      left: { message: "<Print Test Banknote", actionId: ActionEnum.PRINT_TEST_BANKNOTE },
-      right: { message: "Execute Print>", actionId: ActionEnum.EXECUTE_PRINT_BANKNOTE },
-    },
-    {
-      left: { message: "<Back", actionId: ActionEnum.GO_MORE_OPTIONS },
-      right: { message: "", actionId: ActionEnum.NO_ACTION },
-    },
-  ],
-};
+export const screenMoreOptions: Screen = screen("Select option", [
+  row(
+    option("<Balance", ActionEnum.GO_BALANCE),
+    option("Deposit>", ActionEnum.GO_DEPOSIT)
+  ),
+  row(
+    option("<Withdraw", ActionEnum.GO_WITHDRAW),
+    option("Statement>", ActionEnum.VIEW_BANKNOTES)
+  ),
+  row(
+    option("<Invest", ActionEnum.GO_INVEST),
+    option("Currency>", ActionEnum.GO_CURRENCIES)
+  ),
+  row(
+    option("<Cancel", ActionEnum.GO_MAIN_MENU),
+    option("Settings>", ActionEnum.GO_SETTINGS)
+  ),
+]);
+
+export const screenWithdrawMenu: Screen = screen("Select amount", [
+  ...denominationRows(),
+  row(
+    option("<Cancel", ActionEnum.CANCEL_WITHDRAW),
+    option("More>", ActionEnum.NO_ACTION)
+  ),
+]);
+
+export const screenConfirm: Screen = screen("Please confirm", [
+  blankRow(),
+  blankRow(),
+  blankRow(),
+  row(
+    option("<Cancel", ActionEnum.CANCEL_WITHDRAW),
+    option("Print>", ActionEnum.EXECUTE_WITHDRAW)
+  ),
+]);
+
+export const screenBalance: Screen = infoScreen(
+  "Account Balance",
+  ActionEnum.GO_MORE_OPTIONS
+);
+
+export const screenDeposit: Screen = infoScreen(
+  "Deposit Funds",
+  ActionEnum.GO_MORE_OPTIONS
+);
+
+export const screenWithdraw: Screen = screen("Withdraw Funds", [
+  ...denominationRows(),
+  backRow(ActionEnum.GO_MORE_OPTIONS, option("More>", ActionEnum.NO_ACTION)),
+]);
+
+export const screenStatement: Screen = createBanknoteListScreen(
+  "Print Statement"
+);
+
+export const screenInvest: Screen = infoScreen(
+  "Invest Funds",
+  ActionEnum.GO_MORE_OPTIONS
+);
+
+export const screenCurrencies: Screen = screen("Select Currency", [
+  row(
+    option("<USDC", ActionEnum.NO_ACTION),
+    option("ETH>", ActionEnum.NO_ACTION)
+  ),
+  row(
+    option("<EUROC", ActionEnum.NO_ACTION),
+    option("DOGE>", ActionEnum.NO_ACTION)
+  ),
+  row(
+    option("<NZDT>", ActionEnum.NO_ACTION),
+    option("PEPE>", ActionEnum.NO_ACTION)
+  ),
+  backRow(ActionEnum.GO_MORE_OPTIONS, option("More>", ActionEnum.NO_ACTION)),
+]);
+
+export const screenSettings: Screen = screen("Settings", [
+  blankRow(),
+  blankRow(),
+  row(
+    option("<Print Test Banknote", ActionEnum.PRINT_TEST_BANKNOTE),
+    option("Execute Print>", ActionEnum.EXECUTE_PRINT_BANKNOTE)
+  ),
+  backRow(ActionEnum.GO_MORE_OPTIONS),
+]);

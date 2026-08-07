@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3Auth } from "../../hooks/useWeb3Auth";
-import { jsPDF } from "jspdf";
-import QRCode from "qrcode";
 import { Copy } from "lucide-react";
 import AddressDisplay from "../../components/AddressDisplay";
 import AnimatedRetroLogo from "../AnimatedRetroLogo";
 import BanknotePrinter from "../BanknotePrinter";
+import ATMKeypad from "./ATMKeypad";
 import {
   mintBanknote,
   getBanknoteInfo,
-  getTokenBalance,
   getAllTokenBalances,
   getTokenAddresses,
   approveTokenSpending,
   web3auth,
   getTokenSymbol,
-  generateAndSaveBanknotePDF,
 } from "../../utils/web3";
+import { generateAndSaveBanknotePDF } from "../../utils/banknote";
+import {
+  TOKEN_SYMBOLS,
+  TokenAddresses,
+  TokenBalances,
+  TokenSymbol,
+} from "../../utils/tokens";
 import {
   screenDisconnected,
   screenMainMenu,
@@ -30,10 +34,22 @@ import {
   screenInvest,
   screenCurrencies,
   screenSettings,
+  createBanknoteListScreen,
 } from "../../data/menus";
 import { Address } from "viem";
 import { Screen } from "../../data/interfaces";
 import { ActionEnum } from "../../data/action-enums";
+
+const mapTokenSymbols = <T,>(value: (symbol: TokenSymbol) => T) =>
+  Object.fromEntries(
+    TOKEN_SYMBOLS.map((symbol) => [symbol, value(symbol)])
+  ) as Record<TokenSymbol, T>;
+
+const zeroBalances = (): TokenBalances =>
+  mapTokenSymbols((symbol) => `0 ${symbol}`);
+
+const placeholderTokenAddresses = (): TokenAddresses =>
+  mapTokenSymbols(() => "0x" as Address);
 
 export default function ATM() {
   const { isLoggedIn, address, balance, login, logout } = useWeb3Auth();
@@ -46,29 +62,13 @@ export default function ATM() {
   const [mintedBanknotes, setMintedBanknotes] = useState<
     Array<{ id: number; denomination: number; tokenSymbol: string }>
   >([]);
-  const [balances, setBalances] = useState<{
-    ETH: string;
-    USDC: string;
-    EURC: string;
-    NZDT: string;
-  }>({
-    ETH: "0 ETH",
-    USDC: "0 USDC",
-    EURC: "0 EURC",
-    NZDT: "0 NZDT",
-  });
-  const [currentToken, setCurrentToken] = useState<"ETH" | "USDC" | "EURC" | "NZDT">("ETH");
-  const [tokenAddresses, setTokenAddresses] = useState<{
-    USDC: Address;
-    EURC: Address;
-    NZDT: Address;
-    ETH: Address;
-  }>({
-    USDC: "0x" as Address,
-    EURC: "0x" as Address,
-    NZDT: "0x" as Address,
-    ETH: "0x" as Address,
-  });
+  const [balances, setBalances] = useState<TokenBalances>(
+    zeroBalances()
+  );
+  const [currentToken, setCurrentToken] = useState<TokenSymbol>("ETH");
+  const [tokenAddresses, setTokenAddresses] = useState<TokenAddresses>(
+    placeholderTokenAddresses()
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -95,25 +95,22 @@ export default function ATM() {
         web3auth.provider,
         address as Address
       );
-      setBalances({
-        ETH: `${allBalances.ETH} ETH`,
-        USDC: `${allBalances.USDC} USDC`,
-        EURC: `${allBalances.EURC} EURC`,
-        NZDT: `${allBalances.NZDT} NZDT`,
-      });
+      setBalances(
+        mapTokenSymbols((symbol) => `${allBalances[symbol]} ${symbol}`)
+      );
     } catch (error) {
       console.error("Error fetching token balances:", error);
       setMessageTop("Failed to fetch token balances. Please try again.");
     }
   };
 
-  const handleTokenChange = useCallback((token: "ETH" | "USDC" | "EURC" | "NZDT") => {
+  const handleTokenChange = useCallback((token: TokenSymbol) => {
     setCurrentToken(token);
   }, []);
 
   const handleMintBanknote = async (
     denomination: number,
-    tokenSymbol: "USDC" | "EURC" | "NZDT" | "ETH"
+    tokenSymbol: TokenSymbol
   ) => {
     if (!web3auth.provider || !address) {
       setMessageTop("Please connect your wallet first.");
@@ -142,12 +139,12 @@ export default function ATM() {
       );
       console.log(`Banknote minted with ID: ${id}, Transaction: ${txHash}`);
   
-      await generateAndSaveBanknotePDF(
+      await generateAndSaveBanknotePDF({
         denomination,
         tokenSymbol,
         id,
-        privateKey
-      );
+        privateKey,
+      });
   
       setMintedBanknotes((prevBanknotes) => [
         ...prevBanknotes,
@@ -163,42 +160,8 @@ export default function ATM() {
     }
   };
 
-  const generateAndSaveBanknotePDF = async (
-    denomination: number,
-    tokenSymbol: string,
-    id: number,
-    privateKey: string
-  ) => {
-    const doc = new jsPDF();
-
-    // Add background image
-    const img = new Image();
-    img.src = "/banknote_1.png";
-    doc.addImage(img, "PNG", 0, 0, 210, 297);
-
-    // Add denomination and token name
-    doc.setFontSize(24);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`${denomination} ${tokenSymbol}`, 150, 50);
-
-    // Add banknote ID
-    doc.setFontSize(14);
-    doc.text(`Banknote ID: ${id}`, 150, 70);
-
-    // Generate QR code for private key
-    const qr = await QRCode.toDataURL(privateKey);
-    doc.addImage(qr, "PNG", 150, 90, 40, 40);
-
-    // Add private key text
-    doc.setFontSize(10);
-    doc.text(`Private Key: ${privateKey}`, 150, 140, { maxWidth: 50 });
-
-    // Save the PDF
-    doc.save(`banknote_${id}.pdf`);
-  };
-
   const handleViewBanknotes = () => {
-    setScreen(screenBanknotes);
+    setScreen(createBanknoteListScreen("Your Banknotes"));
   };
 
   const handlePrintBanknote = async (id: number) => {
@@ -213,12 +176,12 @@ export default function ATM() {
         web3auth.provider,
         banknoteInfo.erc20 as Address
       );
-      await generateAndSaveBanknotePDF(
-        banknoteInfo.denomination,
+      await generateAndSaveBanknotePDF({
+        denomination: banknoteInfo.denomination,
         tokenSymbol,
         id,
-        "Private key not available"
-      );
+        privateKey: "Private key not available",
+      });
       setMessageTop(`Banknote ${id} details saved as PDF`);
     } catch (error) {
       console.error("Error printing banknote:", error);
@@ -296,15 +259,12 @@ export default function ATM() {
       case ActionEnum.MINT_ETH:
         const tokenSymbol = ["USDC", "EURC", "NZDT", "ETH"][
           action - ActionEnum.MINT_USDC
-        ] as "USDC" | "EURC" | "NZDT" | "ETH";
+        ] as TokenSymbol;
         await handleMintBanknote(amount, tokenSymbol);
         break;
       case ActionEnum.EXECUTE_WITHDRAW:
         console.log("Withdraw:", amount);
-        await handleMintBanknote(
-          amount,
-          currentToken as "USDC" | "EURC" | "NZDT" | "ETH"
-        );
+        await handleMintBanknote(amount, currentToken);
         setScreen(screenMainMenu);
         setAmount(0);
         setMessageTop("");
@@ -325,28 +285,6 @@ export default function ATM() {
     }
   };
 
-  const screenBanknotes: Screen = {
-    title: "Your Banknotes",
-    options: [
-      {
-        left: { message: "Select", actionId: ActionEnum.SELECT_BANKNOTE },
-        right: { message: "Print", actionId: ActionEnum.PRINT_BANKNOTE },
-      },
-      {
-        left: { message: "Previous", actionId: ActionEnum.PREVIOUS_BANKNOTE },
-        right: { message: "Next", actionId: ActionEnum.NEXT_BANKNOTE },
-      },
-      {
-        left: { message: "", actionId: ActionEnum.NO_ACTION },
-        right: { message: "", actionId: ActionEnum.NO_ACTION },
-      },
-      {
-        left: { message: "<Back", actionId: ActionEnum.GO_MAIN_MENU },
-        right: { message: "", actionId: ActionEnum.NO_ACTION },
-      },
-    ],
-  };
-
   const [selectedBanknoteIndex, setSelectedBanknoteIndex] = useState(0);
   const selectedBanknote = mintedBanknotes[selectedBanknoteIndex];
 
@@ -358,28 +296,7 @@ export default function ATM() {
 
   return (
     <div className="container">
-      <div className="flex-left">
-        {screen.options.map((item, index) => (
-          <div
-            key={`left-${index}`}
-            className="button2"
-            onClick={() => handleButtonClick(item.left.actionId)}
-          >
-            {" "}
-          </div>
-        ))}
-      </div>
-      <div className="flex">
-        {screen.options.map((item, index) => (
-          <div
-            key={`right-${index}`}
-            className="button1"
-            onClick={() => handleButtonClick(item.right.actionId)}
-          >
-            {" "}
-          </div>
-        ))}
-      </div>
+      <ATMKeypad screen={screen} onButtonClick={handleButtonClick} />
       <div className="computer-container">
         <div className="monitor">
           <div className="monitor-inner">
