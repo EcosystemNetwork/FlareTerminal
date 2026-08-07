@@ -6,17 +6,7 @@ export const useWeb3Auth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [address, setAddress] = useState("");
   const [balance, setBalance] = useState("");
-
-  useEffect(() => {
-    const init = async () => {
-      await web3auth.initModal();
-      if (web3auth.connected) {
-        setIsLoggedIn(true);
-        await updateUserInfo();
-      }
-    };
-    init();
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const updateUserInfo = useCallback(async () => {
     if (web3auth.provider) {
@@ -27,20 +17,48 @@ export const useWeb3Auth = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      try {
+        await web3auth.initModal();
+        if (web3auth.connected) {
+          setIsLoggedIn(true);
+          await updateUserInfo();
+        }
+      } catch (err) {
+        console.error("Error initializing Web3Auth:", err);
+        setError("Failed to initialize authentication: " + (err as Error).message);
+      }
+    };
+    init();
+  }, [updateUserInfo]);
+
   const login = useCallback(async () => {
-    if (!web3auth.connected) {
-      await web3auth.connect();
+    setError(null);
+    try {
+      if (!web3auth.connected) {
+        await web3auth.connect();
+      }
+      setIsLoggedIn(true);
+      await updateUserInfo();
+    } catch (err) {
+      console.error("Error logging in:", err);
+      setError("Login failed: " + (err as Error).message);
     }
-    setIsLoggedIn(true);
-    await updateUserInfo();
   }, [updateUserInfo]);
 
   const logout = useCallback(async () => {
-    await web3auth.logout();
-    setIsLoggedIn(false);
-    setAddress("");
-    setBalance("");
+    setError(null);
+    try {
+      await web3auth.logout();
+      setIsLoggedIn(false);
+      setAddress("");
+      setBalance("");
+    } catch (err) {
+      console.error("Error logging out:", err);
+      setError("Logout failed: " + (err as Error).message);
+    }
   }, []);
 
-  return { isLoggedIn, address, balance, login, logout };
+  return { isLoggedIn, address, balance, error, login, logout };
 };

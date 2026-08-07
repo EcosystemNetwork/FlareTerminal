@@ -36,7 +36,7 @@ import { Screen } from "../../data/interfaces";
 import { ActionEnum } from "../../data/action-enums";
 
 export default function ATM() {
-  const { isLoggedIn, address, balance, login, logout } = useWeb3Auth();
+  const { isLoggedIn, address, balance, error: authError, login, logout } = useWeb3Auth();
   const [screen, setScreen] = useState<Screen>(screenDisconnected);
   const [messageTop, setMessageTop] = useState<string>("");
   const [messageBottom, setMessageBottom] = useState<string>("");
@@ -74,14 +74,26 @@ export default function ATM() {
     const init = async () => {
       if (isLoggedIn && address) {
         setIsLoading(true);
-        await fetchTokenAddresses();
-        await getTokenBalances();
-        setScreen(screenMainMenu);
-        setIsLoading(false);
+        try {
+          await fetchTokenAddresses();
+          await getTokenBalances();
+          setScreen(screenMainMenu);
+        } catch (error) {
+          console.error("Error initializing ATM:", error);
+          setMessageTop("Failed to load account data. Please try again.");
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     init();
   }, [isLoggedIn, address]);
+
+  useEffect(() => {
+    if (authError) {
+      setMessageTop(authError);
+    }
+  }, [authError]);
 
   const fetchTokenAddresses = async () => {
     const addresses = await getTokenAddresses();
@@ -351,9 +363,15 @@ export default function ATM() {
   const selectedBanknote = mintedBanknotes[selectedBanknoteIndex];
 
   const copyAddressToClipboard = () => {
-    navigator.clipboard.writeText(address).then(() => {
-      alert("Address copied to clipboard!");
-    });
+    navigator.clipboard
+      .writeText(address)
+      .then(() => {
+        alert("Address copied to clipboard!");
+      })
+      .catch((error) => {
+        console.error("Failed to copy address to clipboard:", error);
+        alert("Failed to copy address to clipboard.");
+      });
   };
 
   return (

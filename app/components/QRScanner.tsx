@@ -65,8 +65,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError }) => {
         stopScanner();
       },
       (errorMessage) => {
-        console.log(errorMessage);
-        if (onError) onError(errorMessage);
+        // Per-frame decode callback: fires continuously while no QR code is in
+        // view. This is not an actual error, so it must not be surfaced to the
+        // consumer's error handler (doing so would drown out real errors).
+        console.debug("QR scan frame (no code detected):", errorMessage);
       }
     ).then(() => {
       setIsScanning(true);

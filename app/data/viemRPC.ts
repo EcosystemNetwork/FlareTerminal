@@ -27,7 +27,8 @@ const getChainId = async (provider: IProvider): Promise<any> => {
     const chainId = await walletClient.getChainId()
     return chainId.toString();
   } catch (error) {
-    return error;
+    console.error("Error getting chain id:", error);
+    throw error;
   }
 }
 const getAccounts = async (provider: IProvider): Promise<any> => {
@@ -42,7 +43,8 @@ const getAccounts = async (provider: IProvider): Promise<any> => {
 
     return address;
   } catch (error) {
-    return error;
+    console.error("Error getting accounts:", error);
+    throw error;
   }
 }
 
@@ -64,7 +66,8 @@ const getBalance = async (provider: IProvider): Promise<string> => {
     console.log(balance)
     return formatEther(balance);
   } catch (error) {
-    return error as string;
+    console.error("Error getting balance:", error);
+    throw error;
   }
 }
 
@@ -101,7 +104,8 @@ const sendTransaction = async (provider: IProvider): Promise<any> => {
         : value // return everything else unchanged
     );
   } catch (error) {
-    return error;
+    console.error("Error sending transaction:", error);
+    throw error;
   }
 }
 
@@ -126,7 +130,8 @@ const signMessage = async (provider: IProvider): Promise<any> => {
 
     return hash.toString();
   } catch (error) {
-    return error;
+    console.error("Error signing message:", error);
+    throw error;
   }
 }
 
