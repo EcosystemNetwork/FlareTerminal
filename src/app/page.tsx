@@ -14,6 +14,7 @@ const MarketData = dynamic(() => import("@/components/MarketData").then((module)
 const ATMPanel = dynamic(() => import("@/components/ATMPanel").then((module) => module.ATMPanel), { loading: PanelLoading });
 const TradingPanel = dynamic(() => import("@/components/TradingPanel").then((module) => module.TradingPanel), { loading: PanelLoading });
 const Portfolio = dynamic(() => import("@/components/Portfolio").then((module) => module.Portfolio), { loading: PanelLoading });
+const TransactionsPanel = dynamic(() => import("@/components/TransactionsPanel").then((module) => module.TransactionsPanel), { loading: PanelLoading });
 const CommandLine = dynamic(() => import("@/components/CommandLine").then((module) => module.CommandLine), { loading: PanelLoading });
 const DelegationPanel = dynamic(() => import("@/components/DelegationPanel").then((module) => module.DelegationPanel), { loading: PanelLoading });
 const PriceAlertsPanel = dynamic(() => import("@/components/PriceAlertsPanel").then((module) => module.PriceAlertsPanel), { loading: PanelLoading });
@@ -26,7 +27,6 @@ const EpochExplorerPanel = dynamic(() => import("@/components/EpochExplorerPanel
 const ExplorerPanel = dynamic(() => import("@/components/ExplorerPanel").then((module) => module.ExplorerPanel), { loading: PanelLoading });
 const NFTGalleryPanel = dynamic(() => import("@/components/NFTGalleryPanel").then((module) => module.NFTGalleryPanel), { loading: PanelLoading });
 const SwapPanel = dynamic(() => import("@/components/SwapPanel").then((module) => module.SwapPanel), { loading: PanelLoading });
-import { DemoBanner } from "@/components/DemoBanner";
 import { useWallet } from "@/hooks/useWallet";
 import { useFTSO, type PriceHistory } from "@/hooks/useFTSO";
 import { useATM } from "@/hooks/useATM";
@@ -42,12 +42,15 @@ import { useExplorer } from "@/hooks/useExplorer";
 import { useNFTs } from "@/hooks/useNFTs";
 import { useSwap } from "@/hooks/useSwap";
 import type { PanelId, PriceFeed } from "@/lib/types";
+import { FLARE_FOCUS_SYMBOLS } from "@/lib/flare";
 
 interface SharedState {
   prices: PriceFeed[];
+  focusPrices: PriceFeed[];
   loading: boolean;
   priceError: string | null;
   history: PriceHistory;
+  focusHistory: PriceHistory;
   wallet: ReturnType<typeof useWallet>;
   atm: ReturnType<typeof useATM>;
   delegation: ReturnType<typeof useDelegation>;
@@ -66,7 +69,7 @@ interface SharedState {
 
 const PanelRenderer = memo(function PanelRenderer({ panelId, state }: { panelId: PanelId; state: SharedState }) {
   const { focusPanel, addColumn, resetLayout } = useTerminalLayout();
-  const { prices, loading, priceError, history, wallet, atm, delegation, alerts, transfer, governance, fassets, flaredrop, staking, epochs, explorer, nfts, swap, onPrint } = state;
+  const { prices, focusPrices, loading, priceError, history, focusHistory, wallet, atm, delegation, alerts, transfer, governance, fassets, flaredrop, staking, epochs, explorer, nfts, swap, onPrint } = state;
 
   const handleCommand = useCallback(
     (cmd: string): string => {
@@ -82,10 +85,10 @@ const PanelRenderer = memo(function PanelRenderer({ panelId, state }: { panelId:
   DELEGATE   - FTSO delegation panel
   ALERTS     - Price alerts panel
   TRANSFER   - Send FLR/FLRD
-  GOVERNANCE - View & vote on proposals
-  FASSETS    - F-Asset minting/redeeming
+  GOVERNANCE - View real WFLR governance power
+  FASSETS    - F-Asset state, mint instructions, redemption
   FLAREDROP  - Claim FlareDrop rewards
-  STAKING    - rFLR staking panel
+  STAKING    - rFLR reward claiming and withdrawal
   EPOCHS     - FTSO epoch explorer
   EXPLORER   - On-chain tx history
   NFT        - NFT gallery
@@ -172,7 +175,7 @@ Contracts: StableCoin (FLRD) + CashEscrow + FTSO`;
 
   switch (panelId) {
     case "market":
-      return <MarketData prices={prices} loading={loading} error={priceError} history={history} />;
+      return <MarketData prices={focusPrices} loading={loading} error={priceError} history={focusHistory} />;
     case "atm":
       return (
         <ATMPanel
@@ -201,6 +204,7 @@ Contracts: StableCoin (FLRD) + CashEscrow + FTSO`;
           balance={wallet.balance}
           isConnected={wallet.isConnected}
           history={history}
+          signer={wallet.signer}
         />
       );
     case "portfolio":
@@ -218,14 +222,9 @@ Contracts: StableCoin (FLRD) + CashEscrow + FTSO`;
       );
     case "transactions":
       return (
-        <Portfolio
+        <TransactionsPanel
           address={wallet.address}
-          balance={wallet.balance}
-          nativeBalance={wallet.nativeBalance}
-          assetBalances={wallet.assetBalances}
-          prices={prices}
           isConnected={wallet.isConnected}
-          onFaucet={wallet.claimFaucet}
           transactions={atm.transactions}
         />
       );
@@ -254,43 +253,35 @@ Contracts: StableCoin (FLRD) + CashEscrow + FTSO`;
       );
     case "governance":
       return (
-        <DemoBanner title="GOVERNANCE" note="Mock proposals; no on-chain voting yet.">
-          <GovernancePanel
-            isConnected={wallet.isConnected}
-            governance={governance}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <GovernancePanel
+          isConnected={wallet.isConnected}
+          governance={governance}
+          onConnect={wallet.connect}
+        />
       );
     case "fassets":
       return (
-        <DemoBanner title="F-ASSETS" note="Mint/redeem not wired to the FAssets AssetManager.">
-          <FAssetsPanel
-            isConnected={wallet.isConnected}
-            fassets={fassets}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <FAssetsPanel
+          isConnected={wallet.isConnected}
+          fassets={fassets}
+          onConnect={wallet.connect}
+        />
       );
     case "flaredrop":
       return (
-        <DemoBanner title="FLAREDROP" note="Claim is simulated; no on-chain reward claim.">
-          <FlareDropPanel
-            isConnected={wallet.isConnected}
-            flaredrop={flaredrop}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <FlareDropPanel
+          isConnected={wallet.isConnected}
+          flaredrop={flaredrop}
+          onConnect={wallet.connect}
+        />
       );
     case "staking":
       return (
-        <DemoBanner title="rFLR STAKING" note="Staking is simulated; no on-chain staking.">
-          <StakingPanel
-            isConnected={wallet.isConnected}
-            staking={staking}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <StakingPanel
+          isConnected={wallet.isConnected}
+          staking={staking}
+          onConnect={wallet.connect}
+        />
       );
     case "epochs":
       return <EpochExplorerPanel epochs={epochs} />;
@@ -305,25 +296,20 @@ Contracts: StableCoin (FLRD) + CashEscrow + FTSO`;
       );
     case "nft":
       return (
-        <DemoBanner title="NFT GALLERY" note="Metadata is simulated.">
-          <NFTGalleryPanel
-            isConnected={wallet.isConnected}
-            address={wallet.address}
-            nfts={nfts}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <NFTGalleryPanel
+          isConnected={wallet.isConnected}
+          address={wallet.address}
+          nfts={nfts}
+          onConnect={wallet.connect}
+        />
       );
     case "swap":
       return (
-        <DemoBanner title="DEX SWAP" note="No router wired; swap is simulated.">
-          <SwapPanel
-            isConnected={wallet.isConnected}
-            prices={prices}
-            swap={swap}
-            onConnect={wallet.connect}
-          />
-        </DemoBanner>
+        <SwapPanel
+          isConnected={wallet.isConnected}
+          swap={swap}
+          onConnect={wallet.connect}
+        />
       );
     case "command":
       return <CommandLine onCommand={handleCommand} />;
@@ -356,10 +342,10 @@ function HelpPanel() {
             - <span className="text-terminal-amber">FTSO Delegation</span> (F7): Wrap FLR, delegate to data providers, claim rewards<br />
             - <span className="text-terminal-amber">Price Alerts</span> (F8): Set threshold alerts on any FTSO asset<br />
             - <span className="text-terminal-amber">Token Transfer</span>: Send FLR or FLRD to any address<br />
-            - <span className="text-terminal-amber">Governance</span>: View and vote on Flare Improvement Proposals<br />
-            - <span className="text-terminal-amber">F-Assets</span>: Mint/redeem wrapped L1 assets (fBTC, fXRP, fDOGE...)<br />
-            - <span className="text-terminal-amber">FlareDrop</span>: Claim monthly FLR distribution rewards<br />
-            - <span className="text-terminal-amber">rFLR Staking</span>: Stake FLR via RNat for yield rewards<br />
+            - <span className="text-terminal-amber">Governance</span>: View real WFLR voting power and delegations<br />
+            - <span className="text-terminal-amber">F-Assets</span>: Read live FXRP state, direct-mint instructions, and redeem FXRP<br />
+            - <span className="text-terminal-amber">FlareDrop</span>: Claim eligible distribution rewards on-chain<br />
+            - <span className="text-terminal-amber">rFLR Rewards</span>: Claim RNat project rewards and withdraw unlocked WFLR<br />
             - <span className="text-terminal-amber">Epoch Explorer</span>: FTSO epoch info + data provider stats<br />
             - <span className="text-terminal-amber">Block Explorer</span>: On-chain transaction history from Flare explorer<br />
             - <span className="text-terminal-amber">NFT Gallery</span>: View NFTs in connected wallet<br />
@@ -378,8 +364,10 @@ function HelpPanel() {
           <div className="text-terminal-amber mb-1">SMART CONTRACTS</div>
           <div className="text-terminal-white">
             - StableCoin (FLRD): ERC20 with faucet<br />
-            - CashEscrow: Banknote minting & redemption<br />
-            - MockFTSO: Price feed simulation
+            - BearerNoteEscrow: Multi-asset banknote minting and redemption<br />
+            - AssetRegistry: Allowlisted note assets and value limits<br />
+            - SimpleSwap: Live FLRD/FXRP constant-product AMM<br />
+            - FTSOv2: Canonical Flare oracle prices
           </div>
         </div>
         <div>
@@ -450,6 +438,11 @@ function TerminalClock() {
 export default function TerminalPage() {
   const wallet = useWallet();
   const { prices, loading, error: priceError, history: priceHistory } = useFTSO(5000);
+  const focusSymbolSet = new Set<string>(FLARE_FOCUS_SYMBOLS);
+  const focusPrices = prices.filter((feed) => focusSymbolSet.has(feed.symbol));
+  const focusHistory: PriceHistory = Object.fromEntries(
+    Object.entries(priceHistory).filter(([symbol]) => focusSymbolSet.has(symbol))
+  );
   const atm = useATM(wallet.signer);
   const delegation = useDelegation(wallet.signer, wallet.address);
   const alerts = usePriceAlerts(prices);
@@ -461,7 +454,7 @@ export default function TerminalPage() {
   const epochs = useEpochs();
   const explorer = useExplorer();
   const nfts = useNFTs(wallet.address);
-  const swap = useSwap(prices);
+  const swap = useSwap(prices, wallet.signer);
 
   useEffect(() => {
     if (wallet.isConnected) {
@@ -504,9 +497,11 @@ export default function TerminalPage() {
 
   const sharedState: SharedState = {
     prices,
+    focusPrices,
     loading,
     priceError,
     history: priceHistory,
+    focusHistory,
     wallet,
     atm,
     delegation,
@@ -565,7 +560,7 @@ export default function TerminalPage() {
       </div>
 
       {/* Ticker Tape */}
-      <TickerTape prices={prices} />
+      <TickerTape prices={focusPrices} />
 
       {/* Main Terminal Layout — draggable, composable panels */}
       <TerminalLayout
