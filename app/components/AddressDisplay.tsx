@@ -1,27 +1,21 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { TOKEN_SYMBOLS, TokenBalances, TokenSymbol } from '../utils/tokens';
 
 interface AddressDisplayProps {
   address: string;
-  balances: {
-    ETH: string;
-    USDC: string;
-    EURC: string;
-    NZDT: string;
-  };
-  currentToken: string;
-  onTokenChange: (token: string) => void;
+  balances: TokenBalances;
+  currentToken: TokenSymbol;
+  onTokenChange: (token: TokenSymbol) => void;
 }
 
 const AddressDisplay: React.FC<AddressDisplayProps> = ({ address, balances, currentToken, onTokenChange }) => {
-  const tokens = ['ETH', 'USDC', 'EURC', 'NZDT'];
-
   const cycleToken = (direction: 'next' | 'prev') => {
-    const currentIndex = tokens.indexOf(currentToken);
+    const currentIndex = TOKEN_SYMBOLS.indexOf(currentToken);
     const newIndex = direction === 'next'
-      ? (currentIndex + 1) % tokens.length
-      : (currentIndex - 1 + tokens.length) % tokens.length;
-    onTokenChange(tokens[newIndex]);
+      ? (currentIndex + 1) % TOKEN_SYMBOLS.length
+      : (currentIndex - 1 + TOKEN_SYMBOLS.length) % TOKEN_SYMBOLS.length;
+    onTokenChange(TOKEN_SYMBOLS[newIndex]);
   };
 
   const formatBalance = (balance: string) => {
@@ -36,7 +30,7 @@ const AddressDisplay: React.FC<AddressDisplayProps> = ({ address, balances, curr
       <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
         <ChevronLeft onClick={() => cycleToken('prev')} style={{ cursor: 'pointer' }} />
         <span style={{ margin: '0 10px' }}>
-          {formatBalance(balances[currentToken as keyof typeof balances])}
+          {formatBalance(balances[currentToken])}
         </span>
         <ChevronRight onClick={() => cycleToken('next')} style={{ cursor: 'pointer' }} />
       </div>

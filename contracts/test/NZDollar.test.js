@@ -1,18 +1,16 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { deployNZDollar } = require("./helpers");
 
 describe("NZDollar", function () {
-  let NZDollar;
   let nzDollar;
   let owner;
   let addr1;
   let addr2;
 
   beforeEach(async function () {
-    NZDollar = await ethers.getContractFactory("NZDollar");
     [owner, addr1, addr2] = await ethers.getSigners();
-    nzDollar = await NZDollar.deploy(ethers.utils.parseEther("1000000"));
-    await nzDollar.deployed();
+    nzDollar = await deployNZDollar();
   });
 
   it("Should have correct name and symbol", async function () {

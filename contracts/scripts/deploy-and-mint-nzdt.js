@@ -1,17 +1,16 @@
 const { ethers } = require("hardhat");
+const {
+  runScript,
+  getDeployer,
+  deployContract,
+  logBalance,
+} = require("./helpers");
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
-
-  console.log("Deploying contracts with the account:", deployer.address);
+  await getDeployer();
 
   const initialSupply = ethers.utils.parseEther("1000000"); // 1 million NZDT
-  const NZDollar = await ethers.getContractFactory("NZDollar");
-  const nzDollar = await NZDollar.deploy(initialSupply);
-
-  await nzDollar.deployed();
-
-  console.log("NZDollar deployed to:", nzDollar.address);
+  const nzDollar = await deployContract("NZDollar", [initialSupply]);
 
   // Mint 10,000 NZDT to the specified address
   const mintAmount = ethers.utils.parseEther("10000");
@@ -24,16 +23,9 @@ async function main() {
 
   console.log("Minting completed");
 
-  // Check balance
-  const balance = await nzDollar.balanceOf(mintTo);
-  console.log(`Balance of ${mintTo}: ${ethers.utils.formatEther(balance)} NZDT`);
+  await logBalance(nzDollar, mintTo, "NZDT");
 
   console.log("NZDollar contract address:", nzDollar.address);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+runScript(main);

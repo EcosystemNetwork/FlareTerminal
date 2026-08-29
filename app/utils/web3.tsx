@@ -16,8 +16,9 @@ import {
 } from "viem";
 import { CHAIN_NAMESPACES, IProvider } from "@web3auth/base";
 import { EthereumPrivateKeyProvider } from "@web3auth/ethereum-provider";
-import { jsPDF } from 'jspdf';
-import QRCode from 'qrcode';
+import { ERC20_ABI } from "./erc20";
+import { BLOCK_EXPLORER_URL, TokenAddresses, TokenBalances } from "./tokens";
+import { generateBanknotePrivateKey } from "./banknote";
 
 // Replace with your contract ABI
 const CONTRACT_ABI = [
@@ -441,7 +442,7 @@ const chainConfig = {
   chainId: "0xaa36a7", // Sepolia chain ID
   rpcTarget: "https://rpc.sepolia.org",
   displayName: "Sepolia Testnet",
-  blockExplorer: "https://sepolia.etherscan.io",
+  blockExplorer: BLOCK_EXPLORER_URL,
   ticker: "ETH",
   tickerName: "Ethereum",
 };
@@ -480,33 +481,14 @@ async function checkContractState(
   try {
     const balance = await publicClient.readContract({
       address: erc20Address,
-      abi: [
-        {
-          inputs: [{ name: "account", type: "address" }],
-          name: "balanceOf",
-          outputs: [{ name: "", type: "uint256" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_ABI,
       functionName: "balanceOf",
       args: [userAddress],
     });
 
     const allowance = await publicClient.readContract({
       address: erc20Address,
-      abi: [
-        {
-          inputs: [
-            { name: "owner", type: "address" },
-            { name: "spender", type: "address" },
-          ],
-          name: "allowance",
-          outputs: [{ name: "", type: "uint256" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_ABI,
       functionName: "allowance",
       args: [userAddress, CONTRACT_ADDRESS],
     });
@@ -523,22 +505,6 @@ async function checkContractState(
 }
 
 let nextBanknoteId = 1;
-
-function generatePrivateKey(): string {
-  return Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-}
-
-function formatPrivateKey(key: string): string {
-  const groups = [4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 1];
-  let formatted = '';
-  let index = 0;
-  for (const groupLength of groups) {
-    if (formatted) formatted += '-';
-    formatted += key.slice(index, index + groupLength);
-    index += groupLength;
-  }
-  return formatted;
-}
 
 export async function mintBanknote(
   provider: IProvider,
@@ -594,8 +560,7 @@ export async function mintBanknote(
 
     const requestId = randomnessRequestedEvent?.data ?? "0";
 
-    // Generate a private key (this is a simplified example, in practice you'd use a more secure method)
-    const privateKey = generatePrivateKey();
+    const privateKey = generateBanknotePrivateKey();
 
     return { txHash, id, requestId, privateKey };
   } catch (error) {
@@ -711,15 +676,7 @@ async function getTokenDecimals(
 
   const decimals = await publicClient.readContract({
     address: tokenAddress,
-    abi: [
-      {
-        inputs: [],
-        name: "decimals",
-        outputs: [{ name: "", type: "uint8" }],
-        stateMutability: "view",
-        type: "function",
-      },
-    ],
+    abi: ERC20_ABI,
     functionName: "decimals",
   });
 
@@ -734,15 +691,7 @@ export async function getTokenSymbol(
 
   const symbol = await publicClient.readContract({
     address: tokenAddress,
-    abi: [
-      {
-        inputs: [],
-        name: "symbol",
-        outputs: [{ name: "", type: "string" }],
-        stateMutability: "view",
-        type: "function",
-      },
-    ],
+    abi: ERC20_ABI,
     functionName: "symbol",
   });
 
@@ -765,15 +714,7 @@ export async function getTokenBalance(
     try {
       const balance = await publicClient.readContract({
         address: tokenAddress,
-        abi: [
-          {
-            inputs: [{ name: "account", type: "address" }],
-            name: "balanceOf",
-            outputs: [{ name: "", type: "uint256" }],
-            stateMutability: "view",
-            type: "function",
-          },
-        ],
+        abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [userAddress],
       });
@@ -790,12 +731,7 @@ export async function getTokenBalance(
 export async function getAllTokenBalances(
   provider: IProvider,
   userAddress: Address
-): Promise<{
-  ETH: string;
-  USDC: string;
-  EURC: string;
-  NZDT: string;
-}> {
+): Promise<TokenBalances> {
   const tokenAddresses = await getTokenAddresses();
 
   const [ethBalance, usdcBalance, eurcBalance, nzdtBalance] = await Promise.all(
@@ -815,12 +751,7 @@ export async function getAllTokenBalances(
   };
 }
 
-export async function getTokenAddresses(): Promise<{
-  USDC: Address;
-  EURC: Address;
-  NZDT: Address;
-  ETH: Address;
-}> {
+export async function getTokenAddresses(): Promise<TokenAddresses> {
   return {
     USDC: USDC_ADDRESS,
     EURC: EURC_ADDRESS,
@@ -843,18 +774,7 @@ export async function approveTokenSpending(
 
     const { request } = await publicClient.simulateContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [
-            { name: "spender", type: "address" },
-            { name: "amount", type: "uint256" },
-          ],
-          name: "approve",
-          outputs: [{ name: "", type: "bool" }],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-      ],
+      abi: ERC20_ABI,
       functionName: "approve",
       account: address,
       args: [CONTRACT_ADDRESS, parsedAmount],
@@ -868,46 +788,4 @@ export async function approveTokenSpending(
     console.error("Error in approveTokenSpending:", error);
     throw error;
   }
-}
-
-export async function generateAndSaveBanknotePDF(
-  denomination: number,
-  tokenSymbol: string,
-  id: number,
-  privateKey: string
-) {
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: [156, 66] // US currency size (156mm x 66mm)
-  });
-
-  // Add background image
-  const img = new Image();
-  img.src = '/banknote_1.png';
-  doc.addImage(img, 'PNG', 0, 0, 156, 66);
-
-  // Add denomination and token symbol
-  doc.setFontSize(24);
-  doc.setTextColor(44, 62, 80); // Dark blue color
-  doc.text(`${denomination} ${tokenSymbol}`, 156 - 42, 8 + 24/2, { align: 'left', baseline: 'middle' });
-
-  // Generate QR code for private key (unformatted)
-  const qr = await QRCode.toDataURL(privateKey);
-  const qrSize = 36;
-  doc.addImage(qr, 'PNG', 156 - 9 - qrSize, (55 / 2), qrSize, qrSize);
-
-  // Add formatted private key text
-  const formattedPrivateKey = formatPrivateKey(privateKey);
-  doc.setFontSize(6);
-  doc.setTextColor(168, 168, 168);
-  doc.text(`PK: ${formattedPrivateKey}`, 10, 66 - 5, { maxWidth: 136 });
-
-  // Add unique identifier
-  doc.setFontSize(8);
-  doc.setTextColor(44, 62, 80);
-  doc.text(`Unique ID: ${id}`, 10, 66 - 10, { maxWidth: 136 });
-
-  // Save the PDF
-  doc.save(`banknote_${denomination}_${tokenSymbol}.pdf`);
 }

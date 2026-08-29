@@ -1,45 +1,33 @@
 const { ethers } = require("hardhat");
+const {
+  runScript,
+  getDeployer,
+  deployContract,
+  logBalance,
+} = require("./helpers");
+
+const MOCK_TOKENS = [
+  { contract: "MockUSDC", symbol: "USDC" },
+  { contract: "MockEURC", symbol: "EURC" },
+];
+
+const MOCK_TOKEN_DECIMALS = 6;
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with the account:", deployer.address);
+  await getDeployer();
 
-  // Deploy MockUSDC
-  const MockUSDC = await ethers.getContractFactory("MockUSDC");
-  const mockUSDC = await MockUSDC.deploy();
-  await mockUSDC.deployed();
-  console.log("MockUSDC deployed to:", mockUSDC.address);
-
-  // Deploy MockEURC
-  const MockEURC = await ethers.getContractFactory("MockEURC");
-  const mockEURC = await MockEURC.deploy();
-  await mockEURC.deployed();
-  console.log("MockEURC deployed to:", mockEURC.address);
-
-  // Mint tokens
   const mintTo = "0xE6d6F4a7857f0C9ED735397e9bbA36f093752872";
-  const mintAmount = ethers.utils.parseUnits("100000", 6); // 100,000 tokens with 6 decimals
+  const mintAmount = ethers.utils.parseUnits("100000", MOCK_TOKEN_DECIMALS);
 
-  console.log(`Minting 100,000 USDC to ${mintTo}`);
-  await mockUSDC.mint(mintTo, mintAmount);
+  for (const { contract, symbol } of MOCK_TOKENS) {
+    const token = await deployContract(contract);
 
-  console.log(`Minting 100,000 EURC to ${mintTo}`);
-  await mockEURC.mint(mintTo, mintAmount);
+    console.log(`Minting 100,000 ${symbol} to ${mintTo}`);
+    await token.mint(mintTo, mintAmount);
 
-  // Check balances
-  const usdcBalance = await mockUSDC.balanceOf(mintTo);
-  const eurcBalance = await mockEURC.balanceOf(mintTo);
-
-  console.log(`USDC balance of ${mintTo}: ${ethers.utils.formatUnits(usdcBalance, 6)} USDC`);
-  console.log(`EURC balance of ${mintTo}: ${ethers.utils.formatUnits(eurcBalance, 6)} EURC`);
-
-  console.log("MockUSDC contract address:", mockUSDC.address);
-  console.log("MockEURC contract address:", mockEURC.address);
+    await logBalance(token, mintTo, symbol, MOCK_TOKEN_DECIMALS);
+    console.log(`${contract} contract address:`, token.address);
+  }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+runScript(main);

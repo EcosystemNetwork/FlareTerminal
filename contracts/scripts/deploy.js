@@ -1,17 +1,14 @@
-const { ethers } = require("hardhat");
 const fs = require('fs');
+const { runScript, getDeployer, deployContract } = require('./helpers');
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with the account:", deployer.address);
+  const deployer = await getDeployer();
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const BanknoteCollateralVault = await ethers.getContractFactory("BanknoteCollateralVault");
-  const vault = await BanknoteCollateralVault.deploy(deployer.address);
-  await vault.deployed();
-
-  console.log("BanknoteCollateralVault deployed to:", vault.address);
+  const vault = await deployContract("BanknoteCollateralVault", [
+    deployer.address,
+  ]);
 
   const addresses = {
     vault: vault.address,
@@ -24,9 +21,4 @@ async function main() {
   console.log("Contract addresses saved to deployed-addresses.json");
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+runScript(main);

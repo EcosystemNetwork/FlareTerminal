@@ -14,6 +14,19 @@ import {
 import { ethers } from "ethers";
 import { jsPDF } from "jspdf";
 import { Address } from "viem";
+import { translate } from "../data/translations";
+import {
+  EMPTY_STABLECOIN_BALANCES,
+  STABLECOIN_SYMBOLS,
+  StablecoinBalances,
+  StablecoinSymbol,
+  explorerTxUrl,
+} from "../utils/tokens";
+import {
+  BANK_NAME,
+  addCenteredText,
+  addQRCodePlaceholder,
+} from "../utils/pdf";
 
 interface ScannedWallet {
   privateKey: string;
@@ -61,78 +74,6 @@ const simulateRedeemPaperWallets = async (
   }
 };
 
-const translations = {
-  English: {
-    merchantIdLabel: "Enter Your Merchant ID:",
-    next: "Next",
-    scanCode: "Scan Customer's Payment Code",
-    confirmPayment: "Confirm Payment Details",
-    proceedToPayment: "Proceed to Payment",
-    processPayment: "Process Payment",
-    confirmPaymentButton: "Confirm Payment",
-    paymentComplete: "Payment Complete",
-    newPayment: "New Payment",
-    amount: "Amount",
-    transactionId: "Transaction ID",
-    date: "Date",
-    merchantId: "Merchant ID",
-    settings: "Settings",
-    back: "Back",
-    currency: "Currency",
-    language: "Language",
-    saveSettings: "Save Settings",
-    emailReceipt: "Email Receipt",
-    printReceipt: "Print Receipt",
-    cameraTest: "Camera Test",
-  },
-  Spanish: {
-    merchantIdLabel: "Ingrese su ID de comerciante:",
-    next: "Siguiente",
-    scanCode: "Escanear código de pago del cliente",
-    confirmPayment: "Confirmar detalles del pago",
-    proceedToPayment: "Proceder al pago",
-    processPayment: "Procesar pago",
-    confirmPaymentButton: "Confirmar pago",
-    paymentComplete: "Pago completado",
-    newPayment: "Nuevo pago",
-    amount: "Monto",
-    transactionId: "ID de transacción",
-    date: "Fecha",
-    merchantId: "ID de comerciante",
-    settings: "Configuración",
-    back: "Volver",
-    currency: "Moneda",
-    language: "Idioma",
-    saveSettings: "Guardar configuración",
-    emailReceipt: "Enviar recibo por correo",
-    printReceipt: "Imprimir recibo",
-    cameraTest: "Prueba de cámara",
-  },
-  French: {
-    merchantIdLabel: "Entrez votre ID de marchand :",
-    next: "Suivant",
-    scanCode: "Scanner le code de paiement du client",
-    confirmPayment: "Confirmer les détails du paiement",
-    proceedToPayment: "Procéder au paiement",
-    processPayment: "Traiter le paiement",
-    confirmPaymentButton: "Confirmer le paiement",
-    paymentComplete: "Paiement terminé",
-    newPayment: "Nouveau paiement",
-    amount: "Montant",
-    transactionId: "ID de transaction",
-    date: "Date",
-    merchantId: "ID de marchand",
-    settings: "Paramètres",
-    back: "Retour",
-    currency: "Devise",
-    language: "Langue",
-    saveSettings: "Enregistrer les paramètres",
-    emailReceipt: "Envoyer le reçu par email",
-    printReceipt: "Imprimer le reçu",
-    cameraTest: "Test de caméra",
-  },
-};
-
 export default function Merchant() {
   const [step, setStep] = useState(1);
   const [merchantPublicKey, setMerchantPublicKey] = useState("");
@@ -158,19 +99,14 @@ export default function Merchant() {
   const [scannedBalance, setScannedBalance] = useState("");
   const [scannedWallets, setScannedWallets] = useState<ScannedWallet[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [scannedBalances, setScannedBalances] = useState<{
-    USDC: string;
-    EURC: string;
-    NZDT: string;
-  }>({ USDC: "", EURC: "", NZDT: "" });
-  const [selectedToken, setSelectedToken] = useState<"USDC" | "EURC" | "NZDT">(
-    "USDC"
+  const [scannedBalances, setScannedBalances] = useState<StablecoinBalances>(
+    EMPTY_STABLECOIN_BALANCES
   );
-  const [tokenAddresses, setTokenAddresses] = useState<{
-    USDC: Address;
-    EURC: Address;
-    NZDT: Address;
-  }>({
+  const [selectedToken, setSelectedToken] =
+    useState<StablecoinSymbol>("USDC");
+  const [tokenAddresses, setTokenAddresses] = useState<
+    Record<StablecoinSymbol, Address>
+  >({
     USDC: "0x" as Address,
     EURC: "0x" as Address,
     NZDT: "0x" as Address,
@@ -178,7 +114,7 @@ export default function Merchant() {
   const [manualPrivateKey, setManualPrivateKey] = useState("");
   const [manualBanknoteId, setManualBanknoteId] = useState("");
 
-  const t = translations[language as keyof typeof translations];
+  const t = translate(language);
 
   useEffect(() => {
     if (
@@ -215,15 +151,22 @@ export default function Merchant() {
         throw new Error("Web3Auth provider not available");
       }
 
-      const usdcBalance = await getTokenBalance(web3auth.provider, wallet.address as Address, tokenAddresses.USDC);
-      const eurcBalance = await getTokenBalance(web3auth.provider, wallet.address as Address, tokenAddresses.EURC);
-      const nzdtBalance = await getTokenBalance(web3auth.provider, wallet.address as Address, tokenAddresses.NZDT);
-      
-      setScannedBalances({
-        USDC: usdcBalance,
-        EURC: eurcBalance,
-        NZDT: nzdtBalance,
-      });
+      const provider = web3auth.provider;
+      const balances = await Promise.all(
+        STABLECOIN_SYMBOLS.map((symbol) =>
+          getTokenBalance(
+            provider,
+            wallet.address as Address,
+            tokenAddresses[symbol]
+          )
+        )
+      );
+
+      setScannedBalances(
+        Object.fromEntries(
+          STABLECOIN_SYMBOLS.map((symbol, index) => [symbol, balances[index]])
+        ) as StablecoinBalances
+      );
       setShowConfirmation(true);
       setStep(3); // Automatically move to the confirmation step
     } catch (error) {
@@ -231,20 +174,31 @@ export default function Merchant() {
     }
   };
 
-  const handleRedeem = async () => {
+  /**
+   * Redeems a banknote and records the resulting transaction, then runs
+   * `onSuccess` to clear whichever inputs started the redemption.
+   */
+  const submitRedemption = async (
+    {
+      banknoteId,
+      amount,
+      description,
+    }: { banknoteId: number; amount: bigint; description: string },
+    onSuccess: () => void
+  ) => {
     setIsLoading(true);
     setError(null);
     try {
       if (!web3auth.provider) {
         throw new Error("Web3Auth provider not available");
       }
-      
+
       const result = await redeemBanknote(
         web3auth.provider,
-        parseInt(manualBanknoteId),
-        BigInt(scannedBalances[selectedToken]), // Convert to BigInt
+        banknoteId,
+        amount,
         "0x" as `0x${string}`, // Placeholder for signature
-        "Redemption" // Placeholder for description
+        description
       );
 
       const newTransaction: Transaction = {
@@ -258,8 +212,7 @@ export default function Merchant() {
       setRedeemStatus(
         `Payment of ${result.amount} ${result.tokenSymbol} received successfully!`
       );
-      setScannedPrivateKey("");
-      setScannedBalances({ USDC: "", EURC: "", NZDT: "" });
+      onSuccess();
       setStep(4);
     } catch (error) {
       setError((error as Error).message);
@@ -268,58 +221,44 @@ export default function Merchant() {
     }
   };
 
+  const handleRedeem = () =>
+    submitRedemption(
+      {
+        banknoteId: parseInt(manualBanknoteId),
+        amount: BigInt(scannedBalances[selectedToken]),
+        description: "Redemption",
+      },
+      () => {
+        setScannedPrivateKey("");
+        setScannedBalances(EMPTY_STABLECOIN_BALANCES);
+      }
+    );
+
   const handleManualRedeem = async () => {
     if (!ethers.isHexString(manualPrivateKey) || manualPrivateKey.length !== 66) {
       setError("Invalid private key format");
       return;
     }
-  
+
     const banknoteId = parseInt(manualBanknoteId);
     if (isNaN(banknoteId) || banknoteId < 0) {
       setError("Invalid banknote ID");
       return;
     }
-  
-    setIsLoading(true);
-    setError(null);
-    try {
-      if (!web3auth.provider) {
-        throw new Error("Web3Auth provider not available");
-      }
-  
-      // We need to determine the amount and token type here
-      // For now, let's assume we're using the selected token and its balance
-      const amount = BigInt(parseFloat(scannedBalances[selectedToken]) * 1e18); // Convert to wei
-      const signature = "0x" as `0x${string}`; // Placeholder signature
-      const description = "Manual Redemption"; // Description for the redemption
-  
-      const result = await redeemBanknote(
-        web3auth.provider,
+
+    // We need to determine the amount and token type here
+    // For now, let's assume we're using the selected token and its balance
+    await submitRedemption(
+      {
         banknoteId,
-        amount,
-        signature,
-        description
-      );
-  
-      const newTransaction: Transaction = {
-        amount: parseFloat(result.amount),
-        txHash: result.txHash,
-        timestamp: new Date().toISOString(),
-        tokenSymbol: result.tokenSymbol,
-      };
-      setCurrentTransaction(newTransaction);
-      setTransactionHistory((prev) => [newTransaction, ...prev]);
-      setRedeemStatus(
-        `Payment of ${result.amount} ${result.tokenSymbol} received successfully!`
-      );
-      setManualPrivateKey("");
-      setManualBanknoteId("");
-      setStep(4);
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
+        amount: BigInt(parseFloat(scannedBalances[selectedToken]) * 1e18),
+        description: "Manual Redemption",
+      },
+      () => {
+        setManualPrivateKey("");
+        setManualBanknoteId("");
+      }
+    );
   };
 
   const emailReceipt = () => {
@@ -337,12 +276,8 @@ export default function Merchant() {
 
     const doc = new jsPDF();
 
-    // Add logo or header
-    doc.setFontSize(22);
-    doc.text("Skeuomorphica Bank", 105, 20, { align: "center" });
-
-    doc.setFontSize(18);
-    doc.text("Redemption Receipt", 105, 30, { align: "center" });
+    addCenteredText(doc, BANK_NAME, 20, 22);
+    addCenteredText(doc, "Redemption Receipt", 30, 18);
 
     doc.setFontSize(12);
     doc.text(
@@ -358,15 +293,14 @@ export default function Merchant() {
     );
     doc.text(`Merchant ID: ${merchantPublicKey}`, 20, 80);
 
-    // Add QR code for transaction verification (you might want to use a proper QR code library)
-    doc.rect(140, 50, 50, 50);
-    doc.text("Scan to Verify", 165, 105, { align: "center" });
-
-    // Add footer
-    doc.setFontSize(10);
-    doc.text("Thank you for using Skeuomorphica Bank", 105, 280, {
-      align: "center",
+    addQRCodePlaceholder(doc, {
+      x: 140,
+      y: 50,
+      size: 50,
+      label: "Scan to Verify",
     });
+
+    addCenteredText(doc, `Thank you for using ${BANK_NAME}`, 280, 10);
 
     // Save the PDF
     doc.save(`redemption_receipt_${currentTransaction.txHash.slice(0, 6)}.pdf`);
@@ -443,13 +377,15 @@ export default function Merchant() {
             <select
               value={selectedToken}
               onChange={(e) =>
-                setSelectedToken(e.target.value as "USDC" | "EURC" | "NZDT")
+                setSelectedToken(e.target.value as StablecoinSymbol)
               }
               className="merchant-select"
             >
-              <option value="USDC">USDC</option>
-              <option value="EURC">EURC</option>
-              <option value="NZDT">NZDT</option>
+              {STABLECOIN_SYMBOLS.map((symbol) => (
+                <option key={symbol} value={symbol}>
+                  {symbol}
+                </option>
+              ))}
             </select>
             <button
               onClick={handleRedeem}
@@ -484,7 +420,7 @@ export default function Merchant() {
                   {t.merchantId}: {merchantPublicKey}
                 </p>
                 <a
-                  href={`https://sepolia.etherscan.io/tx/${currentTransaction.txHash}`}
+                  href={explorerTxUrl(currentTransaction.txHash)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="merchant-etherscan-link"

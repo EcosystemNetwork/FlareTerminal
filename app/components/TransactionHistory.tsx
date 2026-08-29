@@ -1,5 +1,6 @@
 import React from 'react';
 import { Transaction } from '../types';
+import { translate } from '../data/translations';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
@@ -7,32 +8,8 @@ interface TransactionHistoryProps {
   currency: string;
 }
 
-const translations = {
-  English: {
-    recentTransactions: "Recent Transactions",
-    noTransactions: "No transactions yet.",
-    amount: "Amount",
-    transactionId: "Transaction ID",
-    date: "Date"
-  },
-  Spanish: {
-    recentTransactions: "Transacciones Recientes",
-    noTransactions: "Aún no hay transacciones.",
-    amount: "Monto",
-    transactionId: "ID de Transacción",
-    date: "Fecha"
-  },
-  French: {
-    recentTransactions: "Transactions Récentes",
-    noTransactions: "Pas encore de transactions.",
-    amount: "Montant",
-    transactionId: "ID de Transaction",
-    date: "Date"
-  }
-};
-
 const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, language, currency }) => {
-  const t = translations[language as keyof typeof translations];
+  const t = translate(language);
 
   return (
     <div>
